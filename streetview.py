@@ -71,7 +71,7 @@ def fetch_streetview(lat: float, long: float, img_size: tuple, heading=None, pit
         return np.array([])
 
 
-def get_path_imgs(start: tuple, end: tuple, interval=1) -> list:
+def get_path_imgs(start: tuple, end: tuple, num_points=100) -> list:
     """
     Retrieves a series of Street View images along a route from the starting point to the destination.
 
@@ -100,7 +100,7 @@ def get_path_imgs(start: tuple, end: tuple, interval=1) -> list:
 
     # Extract the LineString and interpolate points
     line = LineString(directions_result["features"][0]["geometry"]["coordinates"])
-    spaced_points = interpolate_points(line)
+    spaced_points = interpolate_points(line, num_points)
 
     # Calculate headings for spaced points
     spaced_points_heading = calculate_headings(spaced_points)
@@ -113,8 +113,20 @@ def get_path_imgs(start: tuple, end: tuple, interval=1) -> list:
         ) for hd in spaced_points_heading
     ])
 
+    save_geojson(heading_geojson, "spaced_points_with_heading.geojson")
+    # Create and save the map
+    create_map(
+        start_location=STARTING_LOCATION,
+        end_location=DESTINATION_LOCATION,
+        directions_result=directions_result,
+        spaced_points=spaced_points,
+        output_file="route_with_interpolated_points.html"
+    )
+    # Save the original route as GeoJSON
+    save_geojson(directions_result, "route.geojson")
+
     print("Fetching streetview...")
-    for point in heading_geojson['features'][::interval]:
+    for point in heading_geojson['features']:
         coord = point['geometry']['coordinates']  # This is long-lat
         heading = point['properties']['heading']  # 1 - 360
 
@@ -128,4 +140,4 @@ if __name__ == "__main__":
     start = (42.356280, -71.062290)
     end = (42.35155, -71.05818)
 
-    get_path_imgs(start, end)
+    get_path_imgs(start, end, num_points=50)
